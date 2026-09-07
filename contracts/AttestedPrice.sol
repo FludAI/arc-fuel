@@ -30,4 +30,35 @@ contract AttestedPrice {
         require(_signer != address(0), "signer=0");
         signer = _signer;
     }
+
+    /// @notice Post a signed price print. Anyone may relay; only the
+    ///         pipeline's signature makes it valid.
+    /// @param _price      wNEWS/USDC price, 6 decimals.
+    /// @param _observedAt Base-side observation timestamp of the print.
+    /// @param v,r,s       Signature by `signer` over the print digest.
+    function post(uint256 _price, uint64 _observedAt, uint8 v, bytes32 r, bytes32 s) external {
+        if (_observedAt + MAX_AGE < block.timestamp) {
+            revert StalePrint(_observedAt, uint64(block.timestamp));
+        }
+        if (_observedAt <= observedAt) revert NotNewer(_observedAt, observedAt);
+
+        bytes32 digest = keccak256(abi.encodePacked(
+            "\x19Ethereum Signed Message:\n32",
+            keccak256(abi.encode(address(this), block.chainid, _price, _observedAt))
+        ));
+        if (ecrecover(digest, v, r, s) != signer) revert BadSignature();
+
+        price = _price;
+        observedAt = _observedAt;
+        emit PricePosted(_price, _observedAt, msg.sender);
+    }
+
+    /// @notice Latest print, reverting when stale — consumers get a live
+    ///         value or nothing, never a quietly old one.
+    function freshPrice() external view returns (uint256) {
+        if (observedAt + MAX_AGE < block.timestamp) {
+            revert StalePrint(observedAt, uint64(block.timestamp));
+        }
+        return price;
+    }
 }
