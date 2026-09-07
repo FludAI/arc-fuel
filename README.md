@@ -33,6 +33,6 @@ line-by-line review.
 npx solc --bin --optimize -o build contracts/AttestedPrice.sol contracts/WNewsBridge.sol contracts/BaseLocker.sol
 ```
 
-No external dependencies — the full reviewable surface is these two
+No external dependencies — the full reviewable surface is these three
 files. Deployment addresses and the first bridged-token transaction will
 be added here when live.
