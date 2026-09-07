@@ -43,3 +43,14 @@ be added here when live.
 headers). FUEL builds on patent-pending viability-grading technology
 (U.S. patent applications filed) — the enabling grading/valuation system,
 not this contract code; no patent rights are granted by the code license.
+
+## Off-chain scripts (`scripts/`)
+
+- `attester.mjs` — reads slot0 from the canonical Base pool, signs the
+  price print (data key), posts to AttestedPrice on Arc. `--dry-run`
+  works today against Base mainnet.
+- `relayer.mjs` — Base `Locked` → Arc `bridgeIn`; Arc `BridgedOut` →
+  Base `release`. Stateless by design: idempotency is enforced on-chain,
+  so crash-and-replay is safe.
+
+Both need only `ethers`; addresses/keys arrive via `.env` after deploy.
