@@ -36,3 +36,10 @@ npx solc --bin --optimize -o build contracts/AttestedPrice.sol contracts/WNewsBr
 No external dependencies — the full reviewable surface is these three
 files. Deployment addresses and the first bridged-token transaction will
 be added here when live.
+
+## Notices
+
+© 2026 FludAI / viability.news. Contract code is licensed MIT (see SPDX
+headers). FUEL builds on patent-pending viability-grading technology
+(U.S. patent applications filed) — the enabling grading/valuation system,
+not this contract code; no patent rights are granted by the code license.

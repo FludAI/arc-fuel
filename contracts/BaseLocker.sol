@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+// (c) 2026 FludAI / viability.news. Code licensed MIT (SPDX above).
+// FUEL builds on patent-pending viability-grading technology
+// (U.S. patent applications filed); no patent rights are granted here.
+
 interface IERC20 {
     function transferFrom(address from, address to, uint256 value) external returns (bool);
     function transfer(address to, uint256 value) external returns (bool);

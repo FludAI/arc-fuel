@@ -1,3 +1,5 @@
+// (c) 2026 FludAI / viability.news - FUEL builds on patent-pending
+// viability-grading technology (U.S. applications filed).
 // bridge-scenes.jsx — the wNEWS Base⇄Arc bridge, five scenes.
 //
 // Palette discipline (the whole point): C.fuel is wNEWS VALUE IN MOTION and

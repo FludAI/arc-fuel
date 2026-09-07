@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+// (c) 2026 FludAI / viability.news. Code licensed MIT (SPDX above).
+// FUEL builds on patent-pending viability-grading technology
+// (U.S. patent applications filed); no patent rights are granted here.
+
 /// @title AttestedPrice — Arc-side consumer of the canonical Base price
 /// @notice There is deliberately NO Arc-side market for wNEWS. Price
 ///         arrives as signed attestations from the off-chain pipeline
