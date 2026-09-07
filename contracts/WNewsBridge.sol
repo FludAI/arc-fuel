@@ -58,4 +58,82 @@ contract WNewsBridge {
         admin = _admin;
         relayer = _relayer;
     }
+
+    // ---- Bridge mechanics ----
+
+    /// @notice Emitted on mint; `baseLockTx` ties every Arc token to a
+    ///         specific Base-side lock. Float accounting reads this.
+    event BridgedIn(address indexed to, uint256 amount, bytes32 indexed baseLockTx);
+
+    /// @notice Emitted on burn; the Base-side unlocker watches for it.
+    event BridgedOut(address indexed from, uint256 amount, address baseRecipient);
+
+    error AlreadyProcessed(bytes32 baseLockTx);
+
+    /// @notice Each Base lock event mints exactly once.
+    mapping(bytes32 => bool) public processed;
+
+    /// @notice Mint against an attested Base-side lock. Relayer-only,
+    ///         idempotent per lock tx, capped in total.
+    function bridgeIn(address to, uint256 amount, bytes32 baseLockTx)
+        external
+        whenNotPaused
+    {
+        if (msg.sender != relayer) revert NotRelayer();
+        if (processed[baseLockTx]) revert AlreadyProcessed(baseLockTx);
+        if (totalSupply + amount > MINT_CAP) {
+            revert CapExceeded(amount, MINT_CAP - totalSupply);
+        }
+        processed[baseLockTx] = true;
+        totalSupply += amount;
+        balanceOf[to] += amount;
+        emit Transfer(address(0), to, amount);
+        emit BridgedIn(to, amount, baseLockTx);
+    }
+
+    /// @notice Burn Arc-side wNEWS to unlock on Base. Works even when
+    ///         paused — pause stops inflows, never exits.
+    function bridgeOut(uint256 amount, address baseRecipient) external {
+        balanceOf[msg.sender] -= amount;
+        totalSupply -= amount;
+        emit Transfer(msg.sender, address(0), amount);
+        emit BridgedOut(msg.sender, amount, baseRecipient);
+    }
+
+    // ---- Admin (bounded) ----
+
+    function setPaused(bool p) external onlyAdmin {
+        paused = p;
+    }
+
+    function setRelayer(address r) external onlyAdmin {
+        require(r != address(0), "zero addr");
+        relayer = r;
+    }
+
+    // ---- ERC20 transfer surface ----
+
+    function transfer(address to, uint256 value) external returns (bool) {
+        balanceOf[msg.sender] -= value;
+        balanceOf[to] += value;
+        emit Transfer(msg.sender, to, value);
+        return true;
+    }
+
+    function approve(address spender, uint256 value) external returns (bool) {
+        allowance[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 value) external returns (bool) {
+        uint256 allowed = allowance[from][msg.sender];
+        if (allowed != type(uint256).max) {
+            allowance[from][msg.sender] = allowed - value;
+        }
+        balanceOf[from] -= value;
+        balanceOf[to] += value;
+        emit Transfer(from, to, value);
+        return true;
+    }
 }
