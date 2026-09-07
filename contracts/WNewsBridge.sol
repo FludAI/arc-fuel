@@ -26,8 +26,10 @@ contract WNewsBridge {
     uint256 public constant MINT_CAP = 100_000e18;
 
     /// @notice Hardware-backed admin (Safe-bound). Can pause and rotate
-    ///         the relayer; cannot exceed MINT_CAP.
-    address public admin;
+    ///         the relayer; cannot exceed MINT_CAP. Immutable: admin
+    ///         rotation means redeploying — this contract is small and
+    ///         capped enough that redeploy beats a writable admin slot.
+    address public immutable admin;
 
     /// @notice Key that attests Base-side lock events. Data-plane role:
     ///         it can mint only up to the cap, never touch the cap.
