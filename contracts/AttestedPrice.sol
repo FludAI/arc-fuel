@@ -33,24 +33,24 @@ contract AttestedPrice {
 
     /// @notice Post a signed price print. Anyone may relay; only the
     ///         pipeline's signature makes it valid.
-    /// @param _price      wNEWS/USDC price, 6 decimals.
-    /// @param _observedAt Base-side observation timestamp of the print.
-    /// @param v,r,s       Signature by `signer` over the print digest.
-    function post(uint256 _price, uint64 _observedAt, uint8 v, bytes32 r, bytes32 s) external {
-        if (_observedAt + MAX_AGE < block.timestamp) {
-            revert StalePrint(_observedAt, uint64(block.timestamp));
+    /// @param newPrice   wNEWS/USDC price, 6 decimals.
+    /// @param newObserved Base-side observation timestamp of the print.
+    /// @param v,r,s      Signature by `signer` over the print digest.
+    function post(uint256 newPrice, uint64 newObserved, uint8 v, bytes32 r, bytes32 s) external {
+        if (newObserved + MAX_AGE < block.timestamp) {
+            revert StalePrint(newObserved, uint64(block.timestamp));
         }
-        if (_observedAt <= observedAt) revert NotNewer(_observedAt, observedAt);
+        if (newObserved <= observedAt) revert NotNewer(newObserved, observedAt);
 
         bytes32 digest = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
-            keccak256(abi.encode(address(this), block.chainid, _price, _observedAt))
+            keccak256(abi.encode(address(this), block.chainid, newPrice, newObserved))
         ));
         if (ecrecover(digest, v, r, s) != signer) revert BadSignature();
 
-        price = _price;
-        observedAt = _observedAt;
-        emit PricePosted(_price, _observedAt, msg.sender);
+        price = newPrice;
+        observedAt = newObserved;
+        emit PricePosted(newPrice, newObserved, msg.sender);
     }
 
     /// @notice Latest print, reverting when stale — consumers get a live
