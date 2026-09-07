@@ -14,6 +14,11 @@ line-by-line review.
   redemptions — `bridgeOut` burns even when paused); admin and relayer
   are split roles, and admin cannot raise the cap. Mint is idempotent
   per Base-side lock transaction.
+- **`contracts/BaseLocker.sol`** — Base-side vault. `lock(amount)` /
+  `lockFor(arcRecipient, amount)`; `LOCK_CAP` mirrors the Arc mint cap,
+  releases are relayer-attested against Arc burns, idempotent per burn
+  tx, and never pausable — exits always land. Same admin/relayer role
+  split as the bridge.
 - **`contracts/AttestedPrice.sol`** — price consumer. There is
   intentionally no Arc-side AMM pool for wNEWS: a second market for the
   same asset would fork the price signal. Price arrives as signed prints
@@ -25,7 +30,7 @@ line-by-line review.
 ## Build
 
 ```
-npx solc --bin --optimize -o build contracts/AttestedPrice.sol contracts/WNewsBridge.sol
+npx solc --bin --optimize -o build contracts/AttestedPrice.sol contracts/WNewsBridge.sol contracts/BaseLocker.sol
 ```
 
 No external dependencies — the full reviewable surface is these two

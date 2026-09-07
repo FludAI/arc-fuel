@@ -47,11 +47,11 @@ one price signal, many venues.
 
 | # | Step | Who acts | Code | What the user sees |
 |---|------|----------|------|--------------------|
-| 1 | **Lock on Base** — send wNEWS to the lock escrow | user | Base-side locker (see "unbuilt piece" below) | wNEWS leaves their Base wallet; they keep the tx hash — that hash IS their claim ticket |
+| 1 | **Lock on Base** — `lock(amount)` (same address on Arc) or `lockFor(arcRecipient, amount)` | user | [`BaseLocker` L59-L75](../contracts/BaseLocker.sol#L59-L75), emits `Locked(sender, arcRecipient, amount)` | wNEWS leaves their Base wallet; they keep the tx hash — that hash IS their claim ticket |
 | 2 | **Mint on Arc** — relayer attests the lock | relayer only | [`bridgeIn` — WNewsBridge.sol L80](../contracts/WNewsBridge.sol#L80), emits `BridgedIn(to, amount, baseLockTx)` L68 | wNEWS.arc appears at their Arc address; the `BridgedIn` event names their Base lock tx — a 1:1 receipt |
 | 3 | **Use on Arc** — normal ERC20 | anyone | `transfer`/`approve` (standard) | agents pay and get paid; balances move like any token |
 | 4 | **Burn to exit** — leave Arc anytime | any holder | [`bridgeOut` — WNewsBridge.sol L98](../contracts/WNewsBridge.sol#L98), emits `BridgedOut(from, amount, baseRecipient)` L71 | tokens burn on Arc; they name their Base recipient in the same call |
-| 5 | **Unlock on Base** | relayer watches `BridgedOut` | Base-side locker releases | wNEWS back in the named Base wallet |
+| 5 | **Unlock on Base** | relayer watches `BridgedOut` | [`release` — BaseLocker.sol L80](../contracts/BaseLocker.sol#L80), idempotent per Arc burn tx, NOT pausable | wNEWS back in the named Base wallet |
 | P | **Price arrives** (continuous) | anyone can relay; only the signer's signature counts | [`post` — AttestedPrice.sol L39](../contracts/AttestedPrice.sol#L39) → `PricePosted` L23; consumers call [`freshPrice` L58](../contracts/AttestedPrice.sol#L58) | Arc apps show the Base pool's price, at most 2h old — or an explicit "stale" error, never a silently old number |
 
 ## The three safety facts (make these LOUD)
@@ -95,18 +95,16 @@ Invariant to display on any dashboard, at all times:
 | **price signer** (data-plane) | make a price print valid | move any funds; sign backwards (prints are monotonic) |
 | **any holder** | exit via `bridgeOut`, always | be trapped by a pause |
 
-## The one unbuilt piece
+## Both sides built
 
-The **Base-side locker**. Two options, decision pending:
-
-- *Minimal:* designated escrow (Safe) address; relayer watches wNEWS
-  `Transfer`s to it; Arc recipient defaults to the sender's address.
-- *Cleaner (~30 lines, recommended):* tiny `BaseLocker` contract with
-  `lockFor(arcRecipient, amount)` emitting `Locked(sender, arcRecipient,
-  amount)` — lets a user lock from one wallet and receive on Arc at
-  another, and gives the relayer a purpose-built event to watch.
-
-Everything Arc-side is built, Slither-clean, and compiles.
+All three contracts compile clean and run Slither (102 detectors) with
+zero findings on the bridge pair: `WNewsBridge` (Arc), `BaseLocker`
+(Base), `AttestedPrice` (Arc; two accepted-by-design timestamp
+informationals, see SECURITY.md). `BaseLocker` mirrors the Arc side's
+discipline: `LOCK_CAP` equals `MINT_CAP` (custody risk = mint risk),
+pause gates lock-ins but `release` is deliberately NOT pausable (exits
+from Arc always land), admin immutable, relayer data-plane, one release
+per Arc burn tx.
 
 ## Animation storyboard (handoff to Claude Design)
 

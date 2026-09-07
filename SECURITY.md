@@ -22,8 +22,8 @@ sized to be audited by inspection.
 
 ## Static analysis status
 
-Slither (0.11.6, all 102 detectors) runs clean on `WNewsBridge.sol`
-(0 findings). `AttestedPrice.sol` carries two informational
+Slither (0.11.6, all 102 detectors) runs clean on `WNewsBridge.sol` and
+`BaseLocker.sol` (0 findings each). `AttestedPrice.sol` carries two informational
 `block-timestamp` findings, accepted by design: the 2-hour staleness
 bound (`MAX_AGE`) is deliberately coarse — validator timestamp drift of
 seconds cannot meaningfully move a bound of hours, and the alternative
