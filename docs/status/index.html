@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wNEWS Bridge Status</title>
+<!--
+  Live port of the Claude Design status-page handoff (docs/STATUS-PAGE-SPEC.md).
+  Design rules carried over verbatim:
+  - --fuel is wNEWS value and nothing else; neutrals for information; red/green status only.
+  - Motion is state-driven, never looping. The price age is the only always-running clock.
+  - 100vh, no page scroll; the activity log is the only vertical slack absorber.
+  - Captions must agree with the picture at every instant.
+  All state below is LIVE from public RPCs — no keys, no backend, no simulation.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fuel:#FF9D2E; --fuelDim:rgba(255,157,46,.22);
+  --bg:#0B0D10; --panel:#12161C; --panel2:#161B22; --line:#262C36; --line2:#333B46;
+  --ink:#E9ECF1; --info:#C9D4E2; --muted:#98A3B2; --dim:#717C8A;
+  --rule:#1D232B; --chrome:rgba(255,255,255,.05);
+  --ok:#2FBF71; --bad:#F0453F; --warn:#E0A32E;
+  --mono:'JetBrains Mono',monospace; --sans:'Instrument Sans',system-ui,sans-serif;
+}
+[data-theme="day"]{
+  --fuel:#C86A05; --fuelDim:rgba(200,106,5,.16);
+  --bg:#F7F7F4; --panel:#FFFFFF; --panel2:#FBFBF8; --line:#E2E2DA; --line2:#C8CDD6;
+  --ink:#0B0D10; --info:#2E3946; --muted:#5F6B7A; --dim:#7B8694;
+  --rule:#E6E6E0; --chrome:rgba(11,13,16,.05);
+  --ok:#0B7A40; --bad:#C2201A; --warn:#8A5A08;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{height:100vh;background:var(--bg);color:var(--ink);font:14px/1.4 var(--sans);
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;overflow:hidden;
+  transition:background .4s ease,color .4s ease}
+button{font-family:var(--mono);cursor:pointer}
+.kicker{font:11.5px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--dim);line-height:1.4}
+header{flex:none;display:flex;align-items:center;gap:12px;
+  padding:14px clamp(20px,2.4vw,32px);border-bottom:1px solid var(--rule)}
+.wordmark{font-size:17px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;flex:none}
+.wordmark span{color:var(--muted);font-weight:500}
+.eyebrow{font:11.5px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+  white-space:nowrap;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.legend{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  font:12px var(--mono);color:var(--muted);white-space:nowrap;min-width:0;overflow:hidden}
+.legend i{width:9px;height:9px;border-radius:2px;background:var(--fuel);flex:none}
+.pillbtn{flex:none;border:1px solid var(--line);background:var(--chrome);color:var(--muted);
+  border-radius:999px;padding:6px 14px;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+main{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;
+  gap:clamp(9px,1.2vh,16px);padding:clamp(12px,1.6vh,20px) clamp(20px,2.4vw,32px)}
+.hero{flex:none;display:flex;gap:clamp(18px,2.4vw,40px);align-items:flex-start;flex-wrap:wrap;
+  overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:clamp(11px,1.3vh,15px) clamp(16px,1.8vw,24px)}
+.heroL{flex:1 1 330px;min-width:280px}
+.eqrow{display:flex;align-items:baseline;gap:clamp(11px,1.4vw,24px);margin-top:9px}
+.bignum{flex:none;font:700 clamp(21px,2.7vw,42px) var(--mono);letter-spacing:-.03em;
+  line-height:1;color:var(--fuel);white-space:nowrap}
+.under{font-size:12.5px;line-height:1.3;color:var(--muted);margin-top:4px}
+.eq{flex:none;font:500 clamp(18px,2vw,30px) var(--mono);line-height:1;color:var(--ok)}
+.eq.bad{color:var(--bad)}
+.recon{margin-top:9px;padding-top:9px;border-top:1px solid var(--rule);
+  font:12px/1.4 var(--mono);color:var(--ok)}
+.recon.bad{color:var(--bad)}
+.gaugeWrap{flex:1 1 330px;min-width:280px}
+.gaugeRow{position:relative;margin-top:11px;display:flex;align-items:stretch}
+.gaugeTrack{flex:1 1 auto;min-width:0;position:relative;height:54px;background:var(--panel2);
+  border:1px solid var(--line);border-radius:6px 0 0 6px;overflow:hidden}
+.gaugeFill{position:absolute;left:0;top:0;bottom:0;width:0%;background:var(--fuelDim);
+  border-right:2px solid var(--fuel);transition:width 1.1s cubic-bezier(.22,.85,.26,1)}
+.gaugeRead{position:absolute;left:13px;right:8px;top:50%;transform:translateY(-50%);
+  overflow:hidden;text-overflow:ellipsis;font:700 15.5px var(--mono);
+  letter-spacing:-.01em;color:var(--ink);white-space:nowrap}
+.endstop{flex:none;width:12px;align-self:stretch;margin:-8px 0;background:var(--line2);
+  border:2px solid var(--ink);border-radius:3px}
+.grid{flex:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));
+  gap:clamp(9px,1vw,13px)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:12px 14px 13px;min-width:0;overflow:hidden}
+.card .h{display:flex;align-items:center;gap:9px}
+.pip{width:9px;height:9px;border-radius:50%;flex:none}
+.card .t{font:11.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .v{font-size:19px;font-weight:600;letter-spacing:-.025em;line-height:1.15;margin-top:9px}
+.card .s{margin-top:7px;font:11px/1.35 var(--mono);min-width:0}
+.proof{flex:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.proofRow{display:flex;align-items:baseline;gap:10px;padding:7px 14px;border-bottom:1px solid var(--rule);min-width:0}
+.proofRow:last-child{border-bottom:none}
+.proofName{flex:0 0 124px;font:11px var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap}
+.proofText{flex:1 1 auto;min-width:0;font-size:13.5px;line-height:1.35;color:var(--info);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logWrap{flex:1 1 auto;min-height:116px;display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.logHead{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 16px;border-bottom:1px solid var(--rule)}
+.logMeta{font:12px var(--mono);color:var(--muted);white-space:nowrap}
+.logBody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.row{display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:none}
+.row.fresh{animation:rowIn .5s cubic-bezier(.2,.8,.2,1) both}
+.row .dot{width:9px;height:9px;flex:none}
+.row .k{flex:0 0 84px;font:11.5px var(--mono);letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+.row .d{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:14px;color:var(--info)}
+.row .d a{color:inherit;text-decoration:none}
+.row .d a:hover{text-decoration:underline}
+.row .a{flex:none;font:14px var(--mono);color:var(--muted);white-space:nowrap}
+.row .a.val{font-weight:700;color:var(--fuel)}
+.row .g{flex:0 0 92px;text-align:right;font:11.5px var(--mono);color:var(--dim);white-space:nowrap}
+.empty{padding:22px 16px;font-size:13.5px;color:var(--dim)}
+footer{flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  overflow:hidden;padding:10px clamp(20px,2.4vw,32px) 11px;border-top:1px solid var(--rule)}
+.footNote{font:12px var(--mono);color:var(--dim);min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.proofBtn{flex:none;border:1px solid var(--line);background:none;color:var(--muted);
+  border-radius:999px;padding:5px 13px;white-space:nowrap;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase}
+.proofBtn.on{border-color:var(--line2);background:var(--chrome);color:var(--ink)}
+.shake{animation:shake .4s ease}
+@keyframes rowIn{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:none}}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wordmark">arc-<span>fuel</span></div>
+  <div class="eyebrow">wNEWS · Base ⇄ Arc · live status</div>
+  <div class="legend"><i></i>amber is value · all else is information</div>
+  <button class="pillbtn" id="refreshBtn">↻ refresh</button>
+  <button class="pillbtn" id="themeBtn">Day</button>
+</header>
+<main>
+  <div class="hero">
+    <div class="heroL">
+      <div class="kicker">The invariant · checked every read</div>
+      <div class="eqrow">
+        <div style="min-width:0">
+          <div class="bignum" id="arcSupply">—</div>
+          <div class="under">Arc totalSupply</div>
+        </div>
+        <div class="eq" id="eqSign">=</div>
+        <div style="min-width:0">
+          <div class="bignum" id="baseLocked">—</div>
+          <div class="under">Base locked in escrow</div>
+        </div>
+      </div>
+      <div class="recon" id="reconLine">connecting to Base and Arc…</div>
+    </div>
+    <div class="gaugeWrap">
+      <div class="kicker" id="gaugeKicker">Headroom to the end stop</div>
+      <div class="gaugeRow">
+        <div class="gaugeTrack">
+          <div class="gaugeFill" id="gaugeFill"></div>
+          <div class="gaugeRead" id="gaugeRead">—</div>
+        </div>
+        <div class="endstop" title="MINT_CAP — a constant; no setter exists"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" id="cardGrid"></div>
+  <div class="proof" id="proofPanel" hidden></div>
+
+  <div class="logWrap">
+    <div class="logHead">
+      <span class="kicker">Bridge activity</span>
+      <span class="logMeta" id="logMeta">reading…</span>
+    </div>
+    <div class="logBody" id="logBody"><div class="empty">Reading both chains…</div></div>
+  </div>
+</main>
+<footer>
+  <span style="display:flex;align-items:center;gap:12px;min-width:0">
+    <button class="proofBtn" id="proofBtn">What these cannot do</button>
+    <span class="footNote">both sides ≤ 100,000 wNEWS · admin cannot raise the cap, mint, take funds, or block an exit</span>
+  </span>
+  <span class="footNote">© 2026 FludAI / viability.news · MIT · testnet bridge, Base mainnet vault</span>
+</footer>
+
+<script>
+'use strict';
+/* ---------- chain wiring (all public reads; every value on screen is live) ---------- */
+const BASE_RPC='https://mainnet.base.org';
+const ARC_RPC='https://rpc.testnet.arc.network';
+const LOCKER='0x96d213e6d0fc3925f557d50d0d49e2cd90a44e57';   // Base
+const BRIDGE='0x96d213e6d0fc3925f557d50d0d49e2cd90a44e57';   // Arc (same string, different chain)
+const PRICE ='0x64131a7ef739e728feae1f482d472f537446214e';   // Arc
+const SEL={totalLocked:'0x56891412',paused:'0x5c975abb',totalSupply:'0x18160ddd',
+  price:'0xa035b1fe',observedAt:'0x9be7dadb'};
+const TOPIC={
+  Locked:'0x989eaa915cbb416ea3d6f9a63b1a3de51770c7674b11fe21ecdf76b4e1d13910',
+  Released:'0xfe4ecfae64ce6e6dce8107654eb7addc328974688a72c24516a7352c21040e4b',
+  BridgedIn:'0x159d57e16f8f70de23756a6774de1daab3fe61cd04d4274e068e079f7d86d79d',
+  BridgedOut:'0x4ae4272b73a4b26f64a062c1759395a1ba2047958acdda63d3d6dd1db2228212',
+  PricePosted:'0x812bb054e233d50cc2e62926e4bf47daa1aeddb1437e68460924bbc6a64c11a8'};
+const DEPLOY_BASE=51023850, DEPLOY_ARC=61010900;   // scan floors (decimal)
+const MAX_AGE=7200, CAP=100000;
+
+// Public RPCs rate-limit (429) and cap getLogs ranges (413):
+// every request goes through one sequential queue with spacing, log scans
+// are chunked, and Base has a fallback endpoint.
+const BASE_RPCS=[BASE_RPC,'https://base-rpc.publicnode.com'];
+let rpcId=1,q=Promise.resolve();
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function rpc(url,method,params){
+  q=q.catch(()=>{}).then(async()=>{
+    const urls=url===BASE_RPC?BASE_RPCS:[url];
+    let lastErr;
+    for(const u of urls){
+      try{
+        const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({jsonrpc:'2.0',id:rpcId++,method,params})});
+        if(r.status===429){lastErr=new Error('429');await sleep(600);continue;}
+        const j=await r.json(); if(j.error)throw new Error(j.error.message);
+        await sleep(120); return j.result;
+      }catch(e){lastErr=e;}
+    }
+    throw lastErr;
+  },()=>{});
+  return q;
+}
+const call=(url,to,data)=>rpc(url,'eth_call',[{to,data},'latest']);
+const hex=n=>'0x'+n.toString(16);
+// incremental scan: remember how far each (chain,topic) has been read
+const scanned={},logCache={};
+async function logs(url,addr,topic,floor,head){
+  const CHUNK=url===ARC_RPC?20000:4000;
+  const key=url+addr+topic;
+  if(!(key in scanned)){scanned[key]=floor;logCache[key]=[];}
+  let from=scanned[key];
+  while(from<=head){
+    const to=Math.min(from+CHUNK-1,head);
+    const part=await rpc(url,'eth_getLogs',[{address:addr,topics:[topic],
+      fromBlock:hex(from),toBlock:hex(to)}]);
+    if(!Array.isArray(part))throw new Error('bad log response');
+    const seen=new Set(logCache[key].map(x=>x.transactionHash+x.logIndex));
+    logCache[key]=logCache[key].concat(part.filter(x=>!seen.has(x.transactionHash+x.logIndex)));
+    from=to+1; scanned[key]=from;
+  }
+  return logCache[key];
+}
+const toNum=h=>Number(BigInt(h));
+const wnews=h=>Number(BigInt(h)/(10n**15n))/1000;             // 18d -> whole tokens (3dp)
+const short=h=>h.slice(0,6)+'…'+h.slice(-2);
+
+/* ---------- state (live only; nothing simulated) ---------- */
+const S={theme:'night',proof:false,ok:null,readAt:null,
+  arcSupply:null,baseLocked:null,basePaused:null,arcPaused:null,
+  price:null,observedAt:null,blockBase:null,blockArc:null,events:[],lastMintAge:null};
+
+async function readAll(){
+  const [arcSupply,arcPaused,price,observedAt,blockArc]=await Promise.all([
+    call(ARC_RPC,BRIDGE,SEL.totalSupply),call(ARC_RPC,BRIDGE,SEL.paused),
+    call(ARC_RPC,PRICE,SEL.price),call(ARC_RPC,PRICE,SEL.observedAt),
+    rpc(ARC_RPC,'eth_blockNumber',[])]);
+  const [baseLocked,basePaused,blockBase]=await Promise.all([
+    call(BASE_RPC,LOCKER,SEL.totalLocked),call(BASE_RPC,LOCKER,SEL.paused),
+    rpc(BASE_RPC,'eth_blockNumber',[])]);
+  const headBase=toNum(blockBase),headArc=toNum(blockArc);
+  const safe=p=>p.catch(()=>null);
+  const locked=await safe(logs(BASE_RPC,LOCKER,TOPIC.Locked,DEPLOY_BASE,headBase))||[];
+  const released=await safe(logs(BASE_RPC,LOCKER,TOPIC.Released,DEPLOY_BASE,headBase))||[];
+  const minted=await safe(logs(ARC_RPC,BRIDGE,TOPIC.BridgedIn,DEPLOY_ARC,headArc))||[];
+  const burned=await safe(logs(ARC_RPC,BRIDGE,TOPIC.BridgedOut,DEPLOY_ARC,headArc))||[];
+  const prints=await safe(logs(ARC_RPC,PRICE,TOPIC.PricePosted,DEPLOY_ARC,headArc))||[];
+
+  const now=Date.now()/1000;
+  const evs=[];
+  const mintedBy={}; minted.forEach(l=>{mintedBy[l.topics.length>2?l.topics[2]:l.data]=l;});
+  locked.forEach(l=>{
+    const amt=wnews('0x'+l.data.slice(2,66));
+    const mint=minted.find(m=>m.topics[2]===l.transactionHash);
+    evs.push({kind:mint?'bridgeIn':'locked',value:true,t:null,tx:l.transactionHash,chain:'base',
+      desc:'lock '+short(l.transactionHash)+(mint?' → minted on Arc':' → awaiting relayer'),amt});
+  });
+  burned.forEach(l=>{
+    const amt=wnews('0x'+l.data.slice(2,66));
+    const rel=released.find(r=>r.topics[2]===l.transactionHash);
+    evs.push({kind:'bridgeOut',value:true,t:null,tx:l.transactionHash,chain:'arc',
+      desc:'burn '+short(l.transactionHash)+(rel?' → released on Base':' → release pending'),amt});
+  });
+  prints.forEach(l=>{
+    const p=Number(BigInt('0x'+l.data.slice(2,66)))/1e6;
+    const ob=Number(BigInt('0x'+l.data.slice(66,130)));
+    evs.push({kind:'price',value:false,t:ob,tx:l.transactionHash,chain:'arc',
+      desc:'signed print · Base pool slot0',amt:'$'+p.toFixed(4)});
+  });
+  // block-number ordering proxy per chain; timestamps only exist for prints
+  evs.sort((a,b)=>(b.t||now)-(a.t||now));
+  S.events=evs.slice(0,12);
+  S.lastMintAge=minted.length?null:undefined;
+  Object.assign(S,{arcSupply:wnews(arcSupply),baseLocked:wnews(baseLocked),
+    arcPaused:BigInt(arcPaused)!==0n,basePaused:BigInt(basePaused)!==0n,
+    price:toNum(price)/1e6,observedAt:toNum(observedAt),
+    blockBase:toNum(blockBase),blockArc:toNum(blockArc),
+    ok:true,readAt:now,mintCount:minted.length,lockCount:locked.length});
+}
+
+/* ---------- render (captions derive from the same values as the picture) ---------- */
+const $=id=>document.getElementById(id);
+const fmtAge=s=>{s=Math.max(0,Math.floor(s));return s<60?s+'s ago':s<3600?Math.floor(s/60)+'m '+(s%60)+'s ago':(s/3600).toFixed(1)+'h ago';};
+
+function render(){
+  const now=Date.now()/1000;
+  const stale=S.observedAt!=null&&(now-S.observedAt)>MAX_AGE;
+  if(S.arcSupply!=null){
+    const eq=Math.abs(S.arcSupply-S.baseLocked)<1e-9;
+    $('arcSupply').textContent=S.arcSupply.toLocaleString('en-US');
+    $('baseLocked').textContent=S.baseLocked.toLocaleString('en-US');
+    $('eqSign').textContent=eq?'=':'≠'; $('eqSign').className='eq'+(eq?'':' bad');
+    $('reconLine').className='recon'+(eq?'':' bad');
+    $('reconLine').textContent=eq
+      ?'reconciled at Base '+S.blockBase.toLocaleString()+' / Arc '+S.blockArc.toLocaleString()+' · every mint has a lock behind it'
+      :'DISCREPANCY — supplies differ; stop and ask why (a pending relayer mint is the only benign cause)';
+    $('gaugeFill').style.width=(100*S.arcSupply/CAP)+'%';
+    $('gaugeRead').textContent=S.arcSupply.toLocaleString('en-US')+' locked & minted';
+    const near=S.arcSupply/CAP>0.9;
+    $('gaugeRead').style.color=near?'var(--fuel)':'var(--ink)';
+    $('gaugeKicker').style.color=near?'var(--fuel)':'var(--dim)';
+  }
+  const cards=[
+    {title:'Entries · bridgeIn',pip:S.arcPaused?'var(--bad)':'var(--ok)',
+     v:S.arcPaused?'Blocked':'Accepting locks',vc:S.arcPaused?'var(--bad)':'var(--ink)',
+     s:S.arcPaused?'paused by the hardware key':'setPaused(false) · nominal',
+     sc:S.arcPaused?'var(--bad)':'var(--ok)',
+     g:'pause gates bridgeIn only'},
+    {title:'Exits · bridgeOut',pip:'var(--ok)',v:'Always open',vc:'var(--ink)',
+     s:'no pause check on this path',sc:'var(--ok)',
+     g:'release on Base is deliberately not pausable — an exit that starts, lands'},
+    {title:'Price attestation',pip:stale?'var(--bad)':'var(--info)',
+     v:stale?'STALE':(S.price!=null?'$'+S.price.toFixed(4):'—'),
+     vc:stale?'var(--bad)':'var(--ink)',
+     s:S.observedAt==null?'reading…':(stale?fmtAge(now-S.observedAt)+' · past MAX_AGE 2h · freshPrice() reverts':'signed print · '+fmtAge(now-S.observedAt)),
+     sc:stale?'var(--bad)':'var(--ok)',shake:stale,
+     g:stale?'freshPrice() reverts — apps refuse loudly rather than serve an old number'
+            :'there is no Arc market · a forged print has no valid signature'},
+    {title:'Relayer',pip:'var(--info)',
+     v:S.mintCount==null?'—':(S.lockCount===S.mintCount?'All tickets served':(S.lockCount-S.mintCount)+' pending'),
+     vc:'var(--ink)',s:'data plane · idempotent per ticket',sc:'var(--muted)',
+     g:'a compromised relayer key cannot mint past the cap'}];
+  $('cardGrid').innerHTML=cards.map(c=>
+    '<div class="card'+(c.shake?' shake':'')+'"><div class="h"><span class="pip" style="background:'+c.pip+'"></span>'+
+    '<span class="t">'+c.title+'</span></div><div class="v" style="color:'+c.vc+'">'+c.v+'</div>'+
+    '<div class="s" style="color:'+c.sc+'">'+c.s+'</div></div>').join('');
+  $('proofPanel').innerHTML=cards.map(c=>
+    '<div class="proofRow"><span class="pip" style="background:'+c.pip+'"></span>'+
+    '<span class="proofName">'+c.title+'</span><span class="proofText">'+c.g+'</span></div>').join('');
+  $('logMeta').textContent=S.ok==null?'reading…':S.ok
+    ?(S.arcPaused?'entries paused · exits still landing':'read '+fmtAge(now-S.readAt))
+    :'RPC unreachable — showing last read '+(S.readAt?fmtAge(now-S.readAt):'never');
+  const ex=e=>e.chain==='base'?'https://basescan.org/tx/'+e.tx:'https://testnet.arcscan.app/tx/'+e.tx;
+  $('logBody').innerHTML=S.events.length?S.events.map(e=>
+    '<div class="row"><span class="dot" style="border-radius:'+(e.value?'50%':'2px')+';background:'+(e.value?'var(--fuel)':'var(--info)')+'"></span>'+
+    '<span class="k">'+e.kind+'</span><span class="d"><a href="'+ex(e)+'" target="_blank" rel="noopener">'+e.desc+'</a></span>'+
+    '<span class="a'+(e.value?' val':'')+'">'+(e.value?e.amt.toLocaleString("en-US")+' wNEWS':e.amt)+'</span>'+
+    '<span class="g">'+(e.t?fmtAge(now-e.t):'')+'</span></div>').join('')
+    :'<div class="empty">No tickets yet. The first lock on Base becomes row one.</div>';
+}
+
+/* ---------- loops: 1s local clock (price age only), 30s chain re-read ---------- */
+let reading=false;
+async function refresh(){if(reading)return;reading=true;
+  try{await readAll();}catch(err){S.ok=false;}finally{reading=false;}render();}
+$('refreshBtn').onclick=refresh;
+$('themeBtn').onclick=()=>{S.theme=S.theme==='night'?'day':'night';
+  document.documentElement.setAttribute('data-theme',S.theme==='day'?'day':'');
+  if(S.theme==='night')document.documentElement.removeAttribute('data-theme');
+  $('themeBtn').textContent=S.theme==='night'?'Day':'Night';};
+$('proofBtn').onclick=()=>{S.proof=!S.proof;$('proofPanel').hidden=!S.proof;
+  $('cardGrid').hidden=S.proof;$('proofBtn').textContent=S.proof?'Hide guarantees':'What these cannot do';
+  $('proofBtn').className='proofBtn'+(S.proof?' on':'');};
+setInterval(render,1000);
+setInterval(refresh,30000);
+refresh();
+</script>
+</body>
+</html>
