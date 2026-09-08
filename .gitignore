@@ -7,3 +7,6 @@ node_modules/
 build/
 scripts/relayer-checkpoint.json
 package-lock.json
+build-deploy/
+scripts/.env
+!scripts/.env.example
