@@ -16,7 +16,7 @@
 //   DEPLOYER_PK, ADMIN, RELAYER, SIGNER, BASE_RPC, ARC_RPC, WNEWS
 
 import { ethers } from "ethers";
-import { execSync } from "node:child_process";
+
 import { readFileSync, existsSync } from "node:fs";
 
 // load .env
@@ -39,13 +39,12 @@ if (missing.length) {
   process.exit(1);
 }
 
-// compile with solc (same invocation as the README) and read artifacts
-console.log("compiling…");
-execSync("npx solc --bin --abi --optimize -o ../build-deploy ../contracts/AttestedPrice.sol ../contracts/WNewsBridge.sol ../contracts/BaseLocker.sol", {
-  cwd: new URL(".", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"),
-  stdio: "inherit",
-  shell: true,
-});
+// artifacts come from the README's compile command, run from the repo root:
+//   npx solc --bin --abi --optimize -o build-deploy contracts/*.sol
+if (!existsSync(new URL("../build-deploy/contracts_WNewsBridge_sol_WNewsBridge.bin", import.meta.url))) {
+  console.error("no artifacts — run from repo root first:\n  npx solc --bin --abi --optimize -o build-deploy contracts/AttestedPrice.sol contracts/WNewsBridge.sol contracts/BaseLocker.sol");
+  process.exit(1);
+}
 const art = (name) => ({
   bytecode: "0x" + readFileSync(new URL(`../build-deploy/contracts_${name}_sol_${name}.bin`, import.meta.url), "utf8").trim(),
   abi: JSON.parse(readFileSync(new URL(`../build-deploy/contracts_${name}_sol_${name}.abi`, import.meta.url), "utf8")),

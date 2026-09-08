@@ -34,8 +34,23 @@ npx solc --bin --optimize -o build contracts/AttestedPrice.sol contracts/WNewsBr
 ```
 
 No external dependencies — the full reviewable surface is these three
-files. Deployment addresses and the first bridged-token transaction will
-be added here when live.
+files.
+
+## Live deployments
+
+Arc is testnet-only today (per Circle's docs); the mainnet redeploy
+happens the day Circle publishes mainnet parameters.
+
+| Contract | Chain | Address |
+|---|---|---|
+| `WNewsBridge` | Arc Testnet (5042002) | [`0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57`](https://testnet.arcscan.app/address/0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57) |
+| `AttestedPrice` | Arc Testnet (5042002) | [`0x64131A7Ef739e728fEae1F482D472F537446214e`](https://testnet.arcscan.app/address/0x64131A7Ef739e728fEae1F482D472F537446214e) |
+| `BaseLocker` | Base (8453) | [`0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57`](https://basescan.org/address/0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57) |
+
+Admin on all three: hardware-backed `0x9dc649Ac43e36805F0C0AAEa1a91aB014b95339c`
+(Ledger; the deployer key held no post-deploy power). First attested
+price print is live on Arc — `freshPrice()` returns the canonical Base
+pool's print, signed and staleness-guarded.
 
 ## Notices
 
