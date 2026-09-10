@@ -42,6 +42,15 @@ function loadCheckpoint() {
   catch { return { base: Number(process.env.START_BLOCK_BASE ?? 0), arc: Number(process.env.START_BLOCK_ARC ?? 0) }; }
 }
 
+// Public RPCs cap eth_getLogs ranges — query in chunks.
+async function chunkedFilter(contract, eventName, from, to, chunk) {
+  const out = [];
+  for (let a = from; a <= to; a += chunk) {
+    out.push(...await contract.queryFilter(eventName, a, Math.min(a + chunk - 1, to)));
+  }
+  return out;
+}
+
 async function tick(ctx) {
   const cp = loadCheckpoint();
   const [baseHead, arcHead] = await Promise.all([
@@ -49,7 +58,7 @@ async function tick(ctx) {
   ]);
 
   // Base locks → Arc mints
-  const locks = await ctx.locker.queryFilter("Locked", cp.base, baseHead);
+  const locks = await chunkedFilter(ctx.locker, "Locked", cp.base, baseHead, 4000);
   for (const ev of locks) {
     const ticket = ev.transactionHash;
     if (await ctx.bridge.processed(ticket)) continue;
@@ -63,7 +72,7 @@ async function tick(ctx) {
   }
 
   // Arc burns → Base releases
-  const burns = await ctx.bridge.queryFilter("BridgedOut", cp.arc, arcHead);
+  const burns = await chunkedFilter(ctx.bridge, "BridgedOut", cp.arc, arcHead, 20000);
   for (const ev of burns) {
     const ticket = ev.transactionHash;
     if (await ctx.locker.released(ticket)) continue;

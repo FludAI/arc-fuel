@@ -25,6 +25,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      # scan checkpoint survives between runs (immutable keys; newest wins)
+      - uses: actions/cache/restore@v4
+        with:
+          path: scripts/relayer-checkpoint.json
+          key: relayer-checkpoint-${{ github.run_id }}
+          restore-keys: relayer-checkpoint-
       - run: npm install --no-fund --no-audit ethers
         working-directory: scripts
       - run: node relayer.mjs --once
@@ -37,3 +43,8 @@ jobs:
           START_BLOCK_BASE: "51023850"
           START_BLOCK_ARC: "61010900"
           RELAYER_PK: ${{ secrets.RELAYER_PK }}
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: scripts/relayer-checkpoint.json
+          key: relayer-checkpoint-${{ github.run_id }}
