@@ -58,7 +58,7 @@ async function tick(ctx) {
   ]);
 
   // Base locks → Arc mints
-  const locks = await chunkedFilter(ctx.locker, "Locked", cp.base, baseHead, 4000);
+  const locks = await chunkedFilter(ctx.locker, "Locked", cp.base, baseHead, 1900);
   for (const ev of locks) {
     const ticket = ev.transactionHash;
     if (await ctx.bridge.processed(ticket)) continue;
@@ -72,7 +72,7 @@ async function tick(ctx) {
   }
 
   // Arc burns → Base releases
-  const burns = await chunkedFilter(ctx.bridge, "BridgedOut", cp.arc, arcHead, 20000);
+  const burns = await chunkedFilter(ctx.bridge, "BridgedOut", cp.arc, arcHead, 9000);
   for (const ev of burns) {
     const ticket = ev.transactionHash;
     if (await ctx.locker.released(ticket)) continue;
