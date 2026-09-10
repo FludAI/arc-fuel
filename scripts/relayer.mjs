@@ -42,11 +42,24 @@ function loadCheckpoint() {
   catch { return { base: Number(process.env.START_BLOCK_BASE ?? 0), arc: Number(process.env.START_BLOCK_ARC ?? 0) }; }
 }
 
-// Public RPCs cap eth_getLogs ranges — query in chunks.
+// Public RPCs cap eth_getLogs ranges AND rate-limit bursts — query in
+// chunks, spaced, with backoff. After the first full scan the checkpoint
+// keeps every later tick to a chunk or two.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function chunkedFilter(contract, eventName, from, to, chunk) {
   const out = [];
   for (let a = from; a <= to; a += chunk) {
-    out.push(...await contract.queryFilter(eventName, a, Math.min(a + chunk - 1, to)));
+    const hi = Math.min(a + chunk - 1, to);
+    for (let attempt = 1; ; attempt++) {
+      try {
+        out.push(...await contract.queryFilter(eventName, a, hi));
+        break;
+      } catch (e) {
+        if (attempt >= 5) throw e;
+        await sleep(1500 * attempt);
+      }
+    }
+    await sleep(300);
   }
   return out;
 }
