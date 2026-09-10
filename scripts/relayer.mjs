@@ -130,10 +130,23 @@ if (dryRun) {
   const r = await tick(ctx);
   console.log(`tick done: ${r.locks} lock(s), ${r.burns} burn(s) examined.`);
 } else {
+  // Cloud Run service shape: expose a health endpoint on $PORT reporting
+  // the last reconcile, while the 30s poll loop runs.
+  const health = { startedAt: new Date().toISOString(), lastTick: null, lastError: null, ticks: 0 };
+  if (process.env.PORT) {
+    const { createServer } = await import("node:http");
+    createServer((_, res) => {
+      res.writeHead(health.lastError && !health.lastTick ? 503 : 200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(health));
+    }).listen(Number(process.env.PORT), () => console.log(`health on :${process.env.PORT}`));
+  }
   console.log("relayer up: Base locks → Arc mints, Arc burns → Base releases (30s poll)");
   for (;;) {
-    try { await tick(ctx); }
-    catch (e) { console.error("tick failed:", e.message ?? e); }
+    try {
+      const r = await tick(ctx);
+      health.lastTick = new Date().toISOString(); health.lastError = null; health.ticks++;
+      if (r.locks || r.burns) console.log(`tick: ${r.locks} lock(s), ${r.burns} burn(s)`);
+    } catch (e) { health.lastError = String(e.message ?? e); console.error("tick failed:", health.lastError); }
     await new Promise((r) => setTimeout(r, 30_000));
   }
 }

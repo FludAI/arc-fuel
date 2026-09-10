@@ -5,5 +5,11 @@
   "type": "module",
   "dependencies": {
     "ethers": "^6.13.0"
+  },
+  "scripts": {
+    "start": "node relayer.mjs"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
