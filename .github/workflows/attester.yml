@@ -1,0 +1,33 @@
+name: attester
+# Posts a signed price print from the canonical Base pool to AttestedPrice
+# on Arc, hourly. The signer is a data key (can make a print valid, never
+# move funds) — the exposure tier Actions secrets are appropriate for.
+# MAX_AGE on-chain is 2h, so an hourly cadence keeps freshPrice() live
+# with one missed run of slack.
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  post-print:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-fund --no-audit ethers
+        working-directory: scripts
+      - run: node attester.mjs
+        working-directory: scripts
+        env:
+          BASE_RPC: https://mainnet.base.org
+          ARC_RPC: https://rpc.testnet.arc.network
+          ATTESTED_PRICE: "0x64131A7Ef739e728fEae1F482D472F537446214e"
+          SIGNER_PK: ${{ secrets.SIGNER_PK }}
