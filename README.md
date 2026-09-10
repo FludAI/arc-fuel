@@ -19,6 +19,10 @@ line-by-line review.
   releases are relayer-attested against Arc burns, idempotent per burn
   tx, and never pausable — exits always land. Same admin/relayer role
   split as the bridge.
+- **`contracts/ServiceLedger.sol`** — attributed agent-to-agent payments:
+  `payFor(to, amount, goalId)` moves wNEWS.arc and stamps the transfer
+  with the company objective it furthers. Stateless memo rail — no
+  balances, no admin, no pause.
 - **`contracts/AttestedPrice.sol`** — price consumer. There is
   intentionally no Arc-side AMM pool for wNEWS: a second market for the
   same asset would fork the price signal. Price arrives as signed prints
@@ -46,6 +50,7 @@ happens the day Circle publishes mainnet parameters.
 | `WNewsBridge` | Arc Testnet (5042002) | [`0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57`](https://testnet.arcscan.app/address/0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57) |
 | `AttestedPrice` | Arc Testnet (5042002) | [`0x64131A7Ef739e728fEae1F482D472F537446214e`](https://testnet.arcscan.app/address/0x64131A7Ef739e728fEae1F482D472F537446214e) |
 | `BaseLocker` | Base (8453) | [`0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57`](https://basescan.org/address/0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57) |
+| `ServiceLedger` | Arc Testnet (5042002) | [`0x9F1D0a31CC30a69eca39211cbd0FA0925a499D1d`](https://testnet.arcscan.app/address/0x9F1D0a31CC30a69eca39211cbd0FA0925a499D1d) |
 
 Admin on all three: hardware-backed `0x9dc649Ac43e36805F0C0AAEa1a91aB014b95339c`
 (Ledger; the deployer key held no post-deploy power). First attested
