@@ -1,0 +1,39 @@
+name: relayer
+# One reconcile pass every 5 minutes: Base Locked -> Arc bridgeIn,
+# Arc BridgedOut -> Base release. Safety lives ON-CHAIN (idempotent per
+# ticket, hard mint cap) — this schedule sets latency, not risk. The
+# always-on 30s-poll worker is the mainnet-grade upgrade; same script.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relayer
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-fund --no-audit ethers
+        working-directory: scripts
+      - run: node relayer.mjs --once
+        working-directory: scripts
+        env:
+          BASE_RPC: https://mainnet.base.org
+          ARC_RPC: https://rpc.testnet.arc.network
+          BASE_LOCKER: "0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57"
+          WNEWS_BRIDGE: "0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57"
+          START_BLOCK_BASE: "51023850"
+          START_BLOCK_ARC: "61010900"
+          RELAYER_PK: ${{ secrets.RELAYER_PK }}

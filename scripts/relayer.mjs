@@ -103,6 +103,10 @@ const ctx = {
 if (dryRun) {
   const r = await tick(ctx);
   console.log(`[dry-run] pending: ${r.locks} lock(s), ${r.burns} burn(s). Nothing sent.`);
+} else if (process.argv.includes("--once")) {
+  // one reconcile pass and exit — the shape a scheduled runner wants
+  const r = await tick(ctx);
+  console.log(`tick done: ${r.locks} lock(s), ${r.burns} burn(s) examined.`);
 } else {
   console.log("relayer up: Base locks → Arc mints, Arc burns → Base releases (30s poll)");
   for (;;) {
