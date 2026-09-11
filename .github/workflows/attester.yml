@@ -6,9 +6,9 @@ name: attester
 # with one missed run of slack.
 
 on:
-  schedule:
-    - cron: "7 * * * *"
-    - cron: "37 * * * *"
+  # schedules removed 2026-09-10: GitHub cron drift breached the 2h staleness
+  # bound; both daemons now run in the always-on Cloud Run service. These
+  # workflows remain as manual backup buttons (workflow_dispatch) only.
   workflow_dispatch:
 
 permissions:
