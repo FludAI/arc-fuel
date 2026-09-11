@@ -25,6 +25,14 @@ button:disabled{opacity:.4;cursor:default}
 .tag.base{background:#101c33;color:#3b82f6}.tag.arc{background:#2a1a08;color:var(--fuel)}
 .out.warn{color:#FF7A73;border-color:#7a2f2b;font-weight:700} .out.good{color:#4FE39A;border-color:#1f5c40;font-weight:700;font-size:18px}
 a{color:var(--fuel);text-decoration:none}
+.deck{overflow:hidden;margin-top:6px}
+.track{display:flex;transition:transform .45s cubic-bezier(.22,.85,.26,1)}
+.track>.panel{min-width:100%;box-sizing:border-box;margin-right:0}
+body.all .deck{overflow:visible}
+body.all .track{display:block;transform:none!important}
+.nav{display:flex;align-items:center;gap:14px;margin-top:16px}
+.nav .step{font:700 17px var(--mono);color:#E9ECF1;flex:1;text-align:center}
+.nav button{margin:0}
 </style>
 </head>
 <body>
@@ -39,6 +47,13 @@ a{color:var(--fuel);text-decoration:none}
   <div class="out" id="conn">not connected</div>
 </div>
 
+<div class="nav">
+  <button id="prevBtn">‹ Back</button>
+  <span class="step" id="step"></span>
+  <button id="nextBtn">Next ›</button>
+  <button id="allBtn">Show all</button>
+</div>
+<div class="deck"><div class="track" id="track">
 <div class="panel">
   <span class="k">1 · Lock wNEWS on Base → mints on Arc</span><span class="tag base">BASE</span>
   <div class="k" style="margin-top:10px;letter-spacing:0;text-transform:none">Amount (whole wNEWS)</div>
@@ -71,6 +86,7 @@ a{color:var(--fuel);text-decoration:none}
   <button class="primary" id="payBtn">2. payFor</button>
   <div class="out" id="payOut">Emits ServicePaid(from, to, amount, goalId) — the attributed flow graph.</div>
 </div>
+</div></div>
 
 <script>
 'use strict';
@@ -105,6 +121,20 @@ async function switchTo(hex,params){
   say('conn','connected '+await signer.getAddress()+'  now on '+(params?params.chainName:'Base'),'good');
 }
 const run=(id,fn)=>async()=>{try{if(!signer)await connect();await fn();}catch(e){say(id,String(e.shortMessage??e.message??e),'warn');}};
+// step deck: one action on screen at a time, sliding Base → Arc like the
+// value itself. "Show all" restores the full stack for operators.
+const STEPS=['1 / 3 · Lock on Base','2 / 3 · Pause — the hardware key (Arc)','3 / 3 · Agent pays agent (Arc)'];
+let slide=0;
+function go(i){slide=Math.max(0,Math.min(STEPS.length-1,i));
+  $('track').style.transform='translateX(-'+(slide*100)+'%)';
+  $('step').textContent=STEPS[slide];
+  $('prevBtn').disabled=slide===0;$('nextBtn').disabled=slide===STEPS.length-1;}
+$('prevBtn').onclick=()=>go(slide-1);
+$('nextBtn').onclick=()=>go(slide+1);
+$('allBtn').onclick=()=>{document.body.classList.toggle('all');
+  $('allBtn').textContent=document.body.classList.contains('all')?'Show steps':'Show all';};
+addEventListener('keydown',e=>{if(e.target.tagName!=='INPUT'){if(e.key==='ArrowRight')go(slide+1);if(e.key==='ArrowLeft')go(slide-1);}});
+go(0);
 $('connect').onclick=run('conn',async()=>{});
 $('netBase').onclick=run('conn',()=>switchTo(CHAIN.base));
 $('netArc').onclick=run('conn',()=>switchTo(CHAIN.arc,ARC_PARAMS));
