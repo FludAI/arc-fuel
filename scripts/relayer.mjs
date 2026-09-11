@@ -132,7 +132,36 @@ if (dryRun) {
 } else {
   // Cloud Run service shape: expose a health endpoint on $PORT reporting
   // the last reconcile, while the 30s poll loop runs.
-  const health = { startedAt: new Date().toISOString(), lastTick: null, lastError: null, ticks: 0 };
+  const health = { startedAt: new Date().toISOString(), lastTick: null, lastError: null, ticks: 0, lastPrint: null };
+
+  // Attestation folded into the always-on service (GitHub cron drifted past
+  // the 2h staleness bound): hourly, posts the canonical Base pool's price
+  // to AttestedPrice on Arc. Active only when SIGNER_PK + ATTESTED_PRICE set.
+  const POOL = "0x2dd7792966535333bae2f063bdf179f1bed220a4";
+  const PRICE_NUM = 10n ** 18n * 2n ** 192n; // priceE6 = this / sqrtPriceX96^2
+  let lastPrintMs = 0;
+  async function postPrintIfDue() {
+    if (!process.env.SIGNER_PK || !process.env.ATTESTED_PRICE) return;
+    if (Date.now() - lastPrintMs < 55 * 60_000) return;
+    const pool = new ethers.Contract(POOL,
+      ["function slot0() view returns (uint160 sqrtPriceX96,int24,uint16,uint16,uint16,uint8,bool)"], base);
+    const [{ sqrtPriceX96 }, blk, net] = await Promise.all([
+      pool.slot0(), base.getBlock("latest"), arc.getNetwork()]);
+    const price = PRICE_NUM / (sqrtPriceX96 * sqrtPriceX96);
+    const observedAt = BigInt(blk.timestamp);
+    const signerW = new ethers.Wallet(process.env.SIGNER_PK);
+    const inner = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(
+      ["address", "uint256", "uint256", "uint64"],
+      [process.env.ATTESTED_PRICE, net.chainId, price, observedAt]));
+    const sig = ethers.Signature.from(await signerW.signMessage(ethers.getBytes(inner)));
+    const attested = new ethers.Contract(process.env.ATTESTED_PRICE,
+      ["function post(uint256,uint64,uint8,bytes32,bytes32)"], signerW.connect(arc));
+    const tx = await attested.post(price, observedAt, sig.v, sig.r, sig.s);
+    await tx.wait();
+    lastPrintMs = Date.now();
+    health.lastPrint = new Date().toISOString();
+    console.log(`print posted: ${Number(price) / 1e6} USDC/wNEWS ${tx.hash}`);
+  }
   if (process.env.PORT) {
     const { createServer } = await import("node:http");
     createServer((_, res) => {
@@ -147,6 +176,8 @@ if (dryRun) {
       health.lastTick = new Date().toISOString(); health.lastError = null; health.ticks++;
       if (r.locks || r.burns) console.log(`tick: ${r.locks} lock(s), ${r.burns} burn(s)`);
     } catch (e) { health.lastError = String(e.message ?? e); console.error("tick failed:", health.lastError); }
+    try { await postPrintIfDue(); }
+    catch (e) { console.error("print failed:", String(e.message ?? e)); }
     await new Promise((r) => setTimeout(r, 30_000));
   }
 }
