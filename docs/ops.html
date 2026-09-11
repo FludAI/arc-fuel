@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wNEWS Bridge Ops</title>
+<!-- Operator cockpit: wallet-signed calls only (window.ethereum). No keys,
+     no backend. Sections gate on the connected chain so a Base action can
+     never fire on Arc or vice versa. Amber = value, per the house rule. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.0/ethers.umd.min.js"></script>
+<style>
+:root{--fuel:#FF9D2E;--bg:#0B0D10;--panel:#12161C;--line:#262C36;--ink:#E9ECF1;
+--muted:#98A3B2;--dim:#717C8A;--ok:#2FBF71;--bad:#F0453F;
+--mono:'JetBrains Mono',Consolas,monospace}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui;padding:24px;max-width:760px;margin:0 auto}
+h1{font-size:17px}h1 span{color:var(--muted);font-weight:500}
+.k{font:11px var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--dim)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px}
+input{width:100%;background:#161B22;border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:8px 10px;font:13px var(--mono);box-sizing:border-box;margin-top:6px}
+button{background:#1e2733;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 16px;font:600 13px system-ui;cursor:pointer;margin-top:10px;margin-right:8px}
+button.primary{background:var(--fuel);color:#0B0D10;border:0}
+button:disabled{opacity:.4;cursor:default}
+.out{font:12.5px var(--mono);background:#161B22;border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:10px;white-space:pre-wrap;word-break:break-all;color:var(--muted)}
+.tag{font:600 10px system-ui;border-radius:4px;padding:2px 8px;margin-left:8px}
+.tag.base{background:#101c33;color:#3b82f6}.tag.arc{background:#2a1a08;color:var(--fuel)}
+.warn{color:var(--bad)} .good{color:var(--ok)}
+a{color:var(--fuel);text-decoration:none}
+</style>
+</head>
+<body>
+<h1>wNEWS bridge <span>· operator cockpit — every action signed in your wallet</span></h1>
+<div class="panel">
+  <span class="k">Connection</span>
+  <div style="margin-top:8px">
+    <button class="primary" id="connect">Connect wallet</button>
+    <button id="netBase">Switch to Base</button>
+    <button id="netArc">Switch/add Arc Testnet</button>
+  </div>
+  <div class="out" id="conn">not connected</div>
+</div>
+
+<div class="panel">
+  <span class="k">1 · Lock wNEWS on Base → mints on Arc</span><span class="tag base">BASE</span>
+  <div class="k" style="margin-top:10px;letter-spacing:0;text-transform:none">Amount (whole wNEWS)</div>
+  <input id="lockAmt" value="1000">
+  <div class="k" style="margin-top:8px;letter-spacing:0;text-transform:none">Arc recipient (default: your same address)</div>
+  <input id="lockTo" placeholder="0x… (optional)">
+  <button id="approveBtn">1. Approve</button>
+  <button class="primary" id="lockBtn">2. Lock</button>
+  <div class="out" id="lockOut">The lock tx hash is your ticket — the relayer mints on Arc within ~30s. Watch the status page.</div>
+</div>
+
+<div class="panel">
+  <span class="k">2 · Admin — pause / unpause entries (Ledger scene)</span><span class="tag arc">ARC</span>
+  <div class="out" style="margin-top:8px">Connect the LEDGER account (0x9dc6…339c) via MetaMask hardware. Pause gates bridgeIn only — exits always work. Needs a little Arc-testnet USDC gas from faucet.circle.com.</div>
+  <button id="pauseBtn">setPaused(true)</button>
+  <button class="primary" id="unpauseBtn">setPaused(false)</button>
+  <button id="pauseState">read paused()</button>
+  <div class="out" id="adminOut">—</div>
+</div>
+
+<div class="panel">
+  <span class="k">3 · Agent pays agent — ServiceLedger payFor</span><span class="tag arc">ARC</span>
+  <div class="k" style="margin-top:10px;letter-spacing:0;text-transform:none">Pay to (agent address)</div>
+  <input id="payTo" placeholder="0x…">
+  <div class="k" style="margin-top:8px;letter-spacing:0;text-transform:none">Amount (whole wNEWS.arc)</div>
+  <input id="payAmt" value="100">
+  <div class="k" style="margin-top:8px;letter-spacing:0;text-transform:none">Goal id (short label — becomes bytes32)</div>
+  <input id="goalId" value="oralinsulin-cost-model">
+  <button id="payApprove">1. Approve ledger</button>
+  <button class="primary" id="payBtn">2. payFor</button>
+  <div class="out" id="payOut">Emits ServicePaid(from, to, amount, goalId) — the attributed flow graph.</div>
+</div>
+
+<script>
+'use strict';
+const ADDR={locker:'0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57',bridge:'0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57',
+ledger:'0x9F1D0a31CC30a69eca39211cbd0FA0925a499D1d',wnewsBase:'0xEd14e4978938aB2b474CdDa9213E3caa4EdD76bA'};
+const CHAIN={base:'0x2105',arc:'0x4CEF52'};
+const ARC_PARAMS={chainId:CHAIN.arc,chainName:'Arc Testnet',nativeCurrency:{name:'USDC',symbol:'USDC',decimals:18},
+rpcUrls:['https://rpc.testnet.arc.network'],blockExplorerUrls:['https://testnet.arcscan.app']};
+const ERC20=['function approve(address,uint256) returns (bool)','function balanceOf(address) view returns (uint256)'];
+const LOCKER=['function lock(uint256)','function lockFor(address,uint256)'];
+const BRIDGE=['function setPaused(bool)','function paused() view returns (bool)','function approve(address,uint256) returns (bool)','function balanceOf(address) view returns (uint256)'];
+const LEDGER=['function payFor(address,uint256,bytes32)'];
+let provider,signer;
+const $=id=>document.getElementById(id);
+const say=(id,msg,cls)=>{const e=$(id);e.textContent=msg;e.className='out'+(cls?' '+cls:'')};
+async function connect(){
+  if(!window.ethereum) return say('conn','no wallet extension found','warn');
+  provider=new ethers.BrowserProvider(window.ethereum);
+  await provider.send('eth_requestAccounts',[]);
+  signer=await provider.getSigner();
+  const net=await provider.getNetwork();
+  say('conn','connected '+await signer.getAddress()+'  chainId '+net.chainId,'good');
+}
+async function requireChain(hex,label){
+  const net=await provider.getNetwork();
+  if('0x'+net.chainId.toString(16)!==hex.toLowerCase()) throw new Error('wrong network — switch to '+label+' first');
+}
+async function switchTo(hex,params){
+  try{await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:hex}]});}
+  catch(e){if(e.code===4902&&params)await window.ethereum.request({method:'wallet_addEthereumChain',params:[params]});else throw e;}
+  provider=new ethers.BrowserProvider(window.ethereum);signer=await provider.getSigner();
+  say('conn','connected '+await signer.getAddress()+'  now on '+(params?params.chainName:'Base'),'good');
+}
+const run=(id,fn)=>async()=>{try{if(!signer)await connect();await fn();}catch(e){say(id,String(e.shortMessage??e.message??e),'warn');}};
+$('connect').onclick=run('conn',async()=>{});
+$('netBase').onclick=run('conn',()=>switchTo(CHAIN.base));
+$('netArc').onclick=run('conn',()=>switchTo(CHAIN.arc,ARC_PARAMS));
+$('approveBtn').onclick=run('lockOut',async()=>{
+  await requireChain(CHAIN.base,'Base');
+  const amt=ethers.parseEther($('lockAmt').value);
+  say('lockOut','approving '+$('lockAmt').value+' wNEWS…');
+  const tx=await new ethers.Contract(ADDR.wnewsBase,ERC20,signer).approve(ADDR.locker,amt);
+  await tx.wait();say('lockOut','approved ✓  '+tx.hash+'\nnow press 2. Lock','good');});
+$('lockBtn').onclick=run('lockOut',async()=>{
+  await requireChain(CHAIN.base,'Base');
+  const amt=ethers.parseEther($('lockAmt').value);
+  const to=$('lockTo').value.trim();
+  const c=new ethers.Contract(ADDR.locker,LOCKER,signer);
+  say('lockOut','locking…');
+  const tx=to?await c.lockFor(to,amt):await c.lock(amt);
+  await tx.wait();
+  say('lockOut','LOCKED ✓ — TICKET: '+tx.hash+'\nrelayer mints on Arc within ~30s\nhttps://basescan.org/tx/'+tx.hash,'good');});
+$('pauseBtn').onclick=run('adminOut',async()=>{
+  await requireChain(CHAIN.arc,'Arc Testnet');
+  say('adminOut','confirm on the DEVICE — read the screen…');
+  const tx=await new ethers.Contract(ADDR.bridge,BRIDGE,signer).setPaused(true);
+  await tx.wait();say('adminOut','PAUSED ✓ entries blocked, exits open  '+tx.hash,'good');});
+$('unpauseBtn').onclick=run('adminOut',async()=>{
+  await requireChain(CHAIN.arc,'Arc Testnet');
+  say('adminOut','confirm on the DEVICE…');
+  const tx=await new ethers.Contract(ADDR.bridge,BRIDGE,signer).setPaused(false);
+  await tx.wait();say('adminOut','UNPAUSED ✓ nominal  '+tx.hash,'good');});
+$('pauseState').onclick=run('adminOut',async()=>{
+  await requireChain(CHAIN.arc,'Arc Testnet');
+  const p=await new ethers.Contract(ADDR.bridge,BRIDGE,provider).paused();
+  say('adminOut','paused() = '+p,p?'warn':'good');});
+$('payApprove').onclick=run('payOut',async()=>{
+  await requireChain(CHAIN.arc,'Arc Testnet');
+  const amt=ethers.parseEther($('payAmt').value);
+  const tx=await new ethers.Contract(ADDR.bridge,BRIDGE,signer).approve(ADDR.ledger,amt);
+  await tx.wait();say('payOut','ledger approved ✓  '+tx.hash,'good');});
+$('payBtn').onclick=run('payOut',async()=>{
+  await requireChain(CHAIN.arc,'Arc Testnet');
+  const amt=ethers.parseEther($('payAmt').value);
+  const goal=ethers.encodeBytes32String($('goalId').value.slice(0,31));
+  const tx=await new ethers.Contract(ADDR.ledger,LEDGER,signer).payFor($('payTo').value.trim(),amt,goal);
+  await tx.wait();
+  say('payOut','PAID ✓ ServicePaid emitted  goal='+$('goalId').value+'\nhttps://testnet.arcscan.app/tx/'+tx.hash,'good');});
+</script>
+</body>
+</html>
