@@ -10,9 +10,9 @@ interface IERC20 {
 }
 
 /// @title EngagementStake — the wNEWS stake leg, on Base, one signature
-/// @notice An LLP stakes wNEWS into a named engagement. The stake is a
-///         market-linked structured-capital leg, not
-///         equity and not a payment: it is returned to the staker at
+/// @notice An LLP (limited-liability participant — the staker) stakes wNEWS
+///         into a named engagement. The stake is a market-linked
+///         structured-capital leg, not equity and not a payment: it is returned to the staker at
 ///         settlement or, if nobody settles, by the staker's own exit
 ///         after `fundedUntil`. A premium may be funded against the
 ///         engagement and is paid to the staker on an admin-attested

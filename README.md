@@ -24,7 +24,8 @@ line-by-line review.
   with the company objective it furthers. Stateless memo rail — no
   balances, no admin, no pause.
 - **`contracts/EngagementStake.sol`** — the wNEWS stake leg, on Base.
-  An LLP stakes into a named engagement with one signature
+  An LLP (limited-liability participant — the staker) stakes into a named
+  engagement with one signature
   (`stake(engagementId, amount, lockSeconds)`); the stake returns in
   full at admin-attested `settle` or by the staker's own `exit` after
   the lock — exit is never pausable, never admin-gated. A staker may set
