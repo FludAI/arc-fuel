@@ -23,6 +23,18 @@ line-by-line review.
   `payFor(to, amount, goalId)` moves wNEWS.arc and stamps the transfer
   with the company objective it furthers. Stateless memo rail — no
   balances, no admin, no pause.
+- **`contracts/EngagementStake.sol`** — the wNEWS stake leg, on Base.
+  An LLP stakes into a named engagement with one signature
+  (`stake(engagementId, amount, lockSeconds)`); the stake returns in
+  full at admin-attested `settle` or by the staker's own `exit` after
+  the lock — exit is never pausable, never admin-gated. A staker may set
+  an on-chain per-ask `cap` so a bounded operator key can `stakeFor`
+  them under it (auto-approve is an allowance, not a setting). Immutable
+  admin and treasury, rotatable operator, no upgradeability.
+  Not encoded yet: whether the stake is at risk on failure — v1 returns
+  it in every path; the premium is the only outcome-contingent amount.
+- **`contracts/TestWNEWS.sol`** — testnet-only mintable stand-in; never
+  mainnet.
 - **`contracts/AttestedPrice.sol`** — price consumer. There is
   intentionally no Arc-side AMM pool for wNEWS: a second market for the
   same asset would fork the price signal. Price arrives as signed prints
@@ -34,7 +46,7 @@ line-by-line review.
 ## Build
 
 ```
-npx solc --bin --optimize -o build contracts/AttestedPrice.sol contracts/WNewsBridge.sol contracts/BaseLocker.sol
+npx solc --bin --optimize -o build contracts/AttestedPrice.sol contracts/WNewsBridge.sol contracts/BaseLocker.sol contracts/ServiceLedger.sol contracts/EngagementStake.sol
 ```
 
 No external dependencies — the full reviewable surface is these three
@@ -51,8 +63,12 @@ happens the day Circle publishes mainnet parameters.
 | `AttestedPrice` | Arc Testnet (5042002) | [`0x64131A7Ef739e728fEae1F482D472F537446214e`](https://testnet.arcscan.app/address/0x64131A7Ef739e728fEae1F482D472F537446214e) |
 | `BaseLocker` | Base (8453) | [`0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57`](https://basescan.org/address/0x96D213E6d0fc3925F557d50D0d49e2Cd90a44E57) |
 | `ServiceLedger` | Arc Testnet (5042002) | [`0x9F1D0a31CC30a69eca39211cbd0FA0925a499D1d`](https://testnet.arcscan.app/address/0x9F1D0a31CC30a69eca39211cbd0FA0925a499D1d) |
+| `EngagementStake` | Base (8453) | [`0x3Dc8CB2e7fECAfE4302c1777a6C2a1c996aC5169`](https://basescan.org/address/0x3Dc8CB2e7fECAfE4302c1777a6C2a1c996aC5169) |
 
-Admin on all three: hardware-backed `0x9dc649Ac43e36805F0C0AAEa1a91aB014b95339c`
+Note `BaseLocker` (Base) and `WNewsBridge` (Arc) share an address —
+same deployer, same nonce on two chains. Always read the chain column.
+
+Admin on all of these: hardware-backed `0x9dc649Ac43e36805F0C0AAEa1a91aB014b95339c`
 (Ledger; the deployer key held no post-deploy power). First attested
 price print is live on Arc — `freshPrice()` returns the canonical Base
 pool's print, signed and staleness-guarded.
