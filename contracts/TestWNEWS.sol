@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 // (c) 2026 FludAI / viability.news. Code licensed MIT (SPDX above).
+// FUEL builds on patent-pending viability-grading technology
+// (U.S. patent applications filed); no patent rights are granted here.
 
 /// @title TestWNEWS — TESTNET ONLY stand-in for wNEWS on Base Sepolia
 /// @notice Anyone can mint. Exists so EngagementStake can be exercised

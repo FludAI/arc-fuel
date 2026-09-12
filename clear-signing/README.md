@@ -25,3 +25,8 @@ clear-signing registry**, and not yet exercised on a device with the
 Ledger Ethereum app's clear-signing path. Until that happens, a Ledger
 signing `stake` shows the raw calldata; the mini app decodes and displays
 the same fields on screen as the interim guard.
+
+---
+© 2026 FludAI / viability.news. Descriptor and code licensed MIT. FUEL builds on
+patent-pending viability-grading technology (U.S. patent applications filed) — the
+enabling grading/valuation system, not this descriptor; no patent rights are granted.
