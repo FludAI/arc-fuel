@@ -1,0 +1,37 @@
+{
+  "_doc": "Operator-agent policy. The agent may act autonomously ONLY inside these limits; anything outside becomes an ESCALATION record for the hardware-key holder. Limits are per-party: graded counterparties earn wider autonomy.",
+  "daily": {
+    "maxTotalWnews": 2000,
+    "maxTxCount": 20
+  },
+  "perTx": {
+    "defaultMaxWnews": 250
+  },
+  "parties": {
+    "0x9dc649Ac43e36805F0C0AAEa1a91aB014b95339c": {
+      "label": "bridge-admin (hardware) — known party",
+      "tier": "graded",
+      "maxTxWnews": 500,
+      "maxDailyWnews": 1000
+    },
+    "0x83F24100bb5C1CA5195a24CCD0E663c3CA3dF6DB": {
+      "label": "demo-holder — internal",
+      "tier": "graded",
+      "maxTxWnews": 500,
+      "maxDailyWnews": 1000
+    }
+  },
+  "unknownPartyPolicy": {
+    "maxTxWnews": 0,
+    "note": "payments to ungraded parties ALWAYS escalate"
+  },
+  "invariantChecks": {
+    "requireBridgeInvariantBeforeLock": true,
+    "requireFreshPriceMaxAgeMinutes": 120,
+    "requirePausedFalse": true
+  },
+  "escalation": {
+    "route": "hardware-key holder via ops cockpit",
+    "record": "escalations.jsonl"
+  }
+}
