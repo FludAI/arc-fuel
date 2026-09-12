@@ -1,0 +1,106 @@
+{
+  "$schema": "https://eips.ethereum.org/assets/eip-7730/erc7730-v1.schema.json",
+  "context": {
+    "contract": {
+      "abi": [
+        { "type": "function", "name": "stake", "stateMutability": "nonpayable",
+          "inputs": [ { "name": "engagementId", "type": "bytes32" }, { "name": "amount", "type": "uint256" }, { "name": "lockSeconds", "type": "uint64" } ], "outputs": [] },
+        { "type": "function", "name": "setCap", "stateMutability": "nonpayable",
+          "inputs": [ { "name": "c", "type": "uint256" } ], "outputs": [] },
+        { "type": "function", "name": "exit", "stateMutability": "nonpayable",
+          "inputs": [ { "name": "engagementId", "type": "bytes32" } ], "outputs": [] },
+        { "type": "function", "name": "fundPremium", "stateMutability": "nonpayable",
+          "inputs": [ { "name": "engagementId", "type": "bytes32" }, { "name": "amount", "type": "uint256" } ], "outputs": [] },
+        { "type": "function", "name": "settle", "stateMutability": "nonpayable",
+          "inputs": [ { "name": "engagementId", "type": "bytes32" }, { "name": "success", "type": "bool" } ], "outputs": [] },
+        { "type": "function", "name": "setOperator", "stateMutability": "nonpayable",
+          "inputs": [ { "name": "o", "type": "address" } ], "outputs": [] },
+        { "type": "function", "name": "setPaused", "stateMutability": "nonpayable",
+          "inputs": [ { "name": "p", "type": "bool" } ], "outputs": [] }
+      ],
+      "deployments": [
+        { "chainId": 8453, "address": "0x3Dc8CB2e7fECAfE4302c1777a6C2a1c996aC5169" }
+      ]
+    }
+  },
+  "metadata": {
+    "owner": "FludAI / viability.news — Agent Fuel",
+    "info": {
+      "legalName": "FludAI",
+      "url": "https://github.com/FludAI/arc-fuel",
+      "lastUpdate": "2026-09-12T00:00:00Z"
+    },
+    "token": {
+      "name": "Wrapped NEWS",
+      "ticker": "wNEWS",
+      "decimals": 18
+    },
+    "constants": {
+      "wnews": "0xEd14e4978938aB2b474CdDa9213E3caa4EdD76bA"
+    }
+  },
+  "display": {
+    "formats": {
+      "stake(bytes32,uint256,uint64)": {
+        "$id": "stake",
+        "intent": "Stake wNEWS into an engagement",
+        "fields": [
+          { "path": "engagementId", "label": "Engagement", "format": "raw" },
+          { "path": "amount", "label": "Stake", "format": "tokenAmount", "params": { "tokenPath": "$.metadata.constants.wnews" } },
+          { "path": "lockSeconds", "label": "Locked for", "format": "duration" }
+        ],
+        "required": ["engagementId", "amount", "lockSeconds"]
+      },
+      "setCap(uint256)": {
+        "$id": "setCap",
+        "intent": "Set auto-approve cap (operator may stake for you at or under this, per ask)",
+        "fields": [
+          { "path": "c", "label": "Cap per ask", "format": "tokenAmount", "params": { "tokenPath": "$.metadata.constants.wnews" } }
+        ],
+        "required": ["c"]
+      },
+      "exit(bytes32)": {
+        "$id": "exit",
+        "intent": "Take your stake back after the lock",
+        "fields": [
+          { "path": "engagementId", "label": "Engagement", "format": "raw" }
+        ],
+        "required": ["engagementId"]
+      },
+      "fundPremium(bytes32,uint256)": {
+        "$id": "fundPremium",
+        "intent": "Fund the success premium for an engagement",
+        "fields": [
+          { "path": "engagementId", "label": "Engagement", "format": "raw" },
+          { "path": "amount", "label": "Premium", "format": "tokenAmount", "params": { "tokenPath": "$.metadata.constants.wnews" } }
+        ],
+        "required": ["engagementId", "amount"]
+      },
+      "settle(bytes32,bool)": {
+        "$id": "settle",
+        "intent": "Admin: attest outcome and settle (stake always returns to the staker)",
+        "fields": [
+          { "path": "engagementId", "label": "Engagement", "format": "raw" },
+          { "path": "success", "label": "Success", "format": "raw" }
+        ],
+        "required": ["engagementId", "success"]
+      },
+      "setOperator(address)": {
+        "$id": "setOperator",
+        "intent": "Admin: rotate the operator key",
+        "fields": [
+          { "path": "o", "label": "New operator", "format": "addressName", "params": { "types": ["eoa"], "sources": ["local"] } }
+        ],
+        "required": ["o"]
+      },
+      "setPaused(bool)": {
+        "$id": "setPaused",
+        "intent": "Admin: pause or resume NEW stakes (exits and settlements are never paused)",
+        "fields": [
+          { "path": "p", "label": "Paused", "format": "raw" }
+        ],
+        "required": ["p"]
+      }
+    }
+  }
+}
