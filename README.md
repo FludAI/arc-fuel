@@ -76,9 +76,7 @@ pool's print, signed and staleness-guarded.
 ## Notices
 
 © 2026 FludAI / viability.news. Contract code is licensed MIT (see SPDX
-headers). FUEL builds on patent-pending viability-grading technology
-(U.S. patent applications filed) — the enabling grading/valuation system,
-not this contract code; no patent rights are granted by the code license.
+headers). Patents pending. The code license grants no patent rights.
 
 ## Off-chain scripts (`scripts/`)
 

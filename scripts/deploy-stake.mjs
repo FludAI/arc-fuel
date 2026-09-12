@@ -1,5 +1,4 @@
-// (c) 2026 FludAI / viability.news. Licensed MIT. FUEL builds on patent-pending
-// viability-grading technology (U.S. patent applications filed); no patent rights are granted here.
+// (c) 2026 FludAI / viability.news. Licensed MIT. Patents pending; no patent rights are granted by this license.
 // deploy-stake.mjs — deploys EngagementStake (and, on Sepolia, TestWNEWS).
 //
 //   node deploy-stake.mjs sepolia    TestWNEWS + EngagementStake on Base Sepolia (84532)

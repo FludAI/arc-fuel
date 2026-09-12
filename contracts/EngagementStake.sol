@@ -2,8 +2,7 @@
 pragma solidity ^0.8.24;
 
 // (c) 2026 FludAI / viability.news. Code licensed MIT (SPDX above).
-// FUEL builds on patent-pending viability-grading technology
-// (U.S. patent applications filed); no patent rights are granted here.
+// Patents pending. No patent rights are granted by this license.
 
 interface IERC20 {
     function transferFrom(address from, address to, uint256 value) external returns (bool);

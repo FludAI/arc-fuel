@@ -110,7 +110,7 @@ carries one "what this means" line in `dim`, e.g.:
   Older than 2 hours, apps refuse it."
 
 Footer carries the standard notice line (© 2026 FludAI / viability.news,
-MIT, patent-pending viability-grading technology) in `dim`, same as the
+MIT, patents pending) in `dim`, same as the
 animations player.
 
 ## Out of scope (v1)
