@@ -11,3 +11,8 @@ build-deploy/
 scripts/.env
 !scripts/.env.example
 build-es/
+build-sl/
+*.bin
+scripts/*.log
+scripts/*.jsonl
+es-check/

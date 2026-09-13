@@ -1,9 +1,10 @@
 # arc-fuel — wNEWS on Arc: capped bridge + attested price
 
-ETHOnline 2026. Two deliberately minimal contracts bringing wNEWS
-(canonical market: wNEWS/USDC Uniswap v3 on Base) to Arc mainnet.
-All code written during the event window, committed granularly for
-line-by-line review.
+ETHOnline 2026. Deliberately minimal contracts bringing wNEWS (canonical
+market: wNEWS/USDC Uniswap v3 on Base) to Arc — live on Arc testnet
+today; the mainnet deployment follows Circle's mainnet parameters — plus
+the Base-side stake contract for the LLP leg. All code written during
+the event window, committed granularly for line-by-line review.
 
 ## Contracts
 
@@ -50,8 +51,8 @@ line-by-line review.
 npx solc --bin --optimize -o build contracts/AttestedPrice.sol contracts/WNewsBridge.sol contracts/BaseLocker.sol contracts/ServiceLedger.sol contracts/EngagementStake.sol
 ```
 
-No external dependencies — the full reviewable surface is these three
-files.
+No external dependencies — the full reviewable surface is the files in
+`contracts/` (six, of which `TestWNEWS.sol` is testnet-only).
 
 ## Live deployments
 
@@ -87,5 +88,11 @@ headers). Patents pending. The code license grants no patent rights.
 - `relayer.mjs` — Base `Locked` → Arc `bridgeIn`; Arc `BridgedOut` →
   Base `release`. Stateless by design: idempotency is enforced on-chain,
   so crash-and-replay is safe.
+- `deploy.mjs` / `deploy-stake.mjs` — deployments; the deployer key holds
+  no post-deploy power (admin/treasury/operator are constructor args).
+- `agent-operator.mjs` + `agent-policy.json` — operator agent under a
+  written policy; anything over its limits becomes an escalation record
+  for the hardware-key holder. (The policy is file-enforced today; the
+  on-chain bounded version is the next step.)
 
-Both need only `ethers`; addresses/keys arrive via `.env` after deploy.
+All need only `ethers`; addresses/keys arrive via `.env` after deploy.

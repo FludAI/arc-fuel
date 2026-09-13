@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-// © 2026 FludAI / viability.news — see repository README for notices.
+// (c) 2026 FludAI / viability.news. Code licensed MIT (SPDX above).
+// Patents pending. No patent rights are granted by this license.
 pragma solidity ^0.8.24;
 
 interface IERC20Minimal {
