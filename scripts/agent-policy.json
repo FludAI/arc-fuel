@@ -14,8 +14,8 @@
       "maxTxWnews": 500,
       "maxDailyWnews": 1000
     },
-    "0x83F24100bb5C1CA5195a24CCD0E663c3CA3dF6DB": {
-      "label": "demo-holder — internal",
+    "0x0000000000000000000000000000000000000000": {
+      "label": "example graded counterparty — replace with a real address",
       "tier": "graded",
       "maxTxWnews": 500,
       "maxDailyWnews": 1000
